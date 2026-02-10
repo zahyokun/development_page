@@ -7,7 +7,147 @@
     </head>
     <body>
       <h1> まるばつゲーム（一部AI使用）</h1>
-     <video width="200px" height="400px" src="marubatu.mp4" controls></video>
+     <video width="500px" height="800px" src="marubatu.mp4" controls></video>
+     <p><h2>コードの例（pythonアプリで実行可能）</h2></p>
+     <pre><code>
+from scene import*
+from scene import Action
+
+class WhiteBackground(Scene):
+	def setup(self):
+		self.background_color = '#DDDDDD'
+		
+		self.messages = [
+			"1Pのターン",
+			"2Pのターン",
+			]
+			
+		self.index = 0
+		
+		w,h = self.size
+		
+		self.label = LabelNode(self.messages[self.index],
+		
+		position = (w/2, h*0.85),
+		
+		font = ('Helvetica', 100),
+		
+		color = 'black')
+		
+		self.add_child(self.label)
+		
+		cell_size = 170
+		spacing = 5
+		grid_size = 3
+		
+		total_width = grid_size * cell_size + (grid_size - 1) * spacing
+		total_height = total_width
+		
+		start_x = self.size.w / 2 - total_width / 2
+		start_y = self.size.h / 2 - total_height / 2 - 80
+		
+		self.squares = []
+				
+		for row in range(grid_size):
+			for col in range(grid_size):
+				x = start_x + col * (cell_size + spacing)
+				y = start_y + (grid_size - 1 - row) * (cell_size + spacing)
+				
+    square = ShapeNode(ui.Path.rect(0, 0, cell_size, cell_size),	
+						
+				fill_color = '#FFFFFF',
+						
+				stroke_color = 'black',
+						
+				position = (x + cell_size / 2, y + cell_size / 2))
+						
+				self.add_child(square)
+				self.squares.append({'x': x, 'y': y, 'w': cell_size, 'h': cell_size, 'node':square, 'mark':""})
+				
+		self.typing = True
+		self.char_index = 0
+		self.typing_speed = 0.1
+		self.typing_timer = 0
+		self.current_message = self.messages[self.index]
+				
+	def touch_ended(self,touch):
+		if hasattr(self, "winner") and self.winner:
+			return
+		
+		for sq in self.squares:
+			if sq['x'] <= touch.location.x <= sq['x'] + sq['w'] and \
+			sq['y'] <= touch.location.y <= sq['y'] + sq['h']:
+				
+				if not sq.get('tapped', False):
+					sq['tapped'] = True
+					
+					mark = '⚪︎' if self.index % 2 ==0 else '✖︎'
+					sq['mark'] = mark
+					color = 'red' if mark == '⚪︎' else 'blue'
+					
+					mark_node = LabelNode(mark,
+					font=('Helvetica', 150),
+					color=color,
+					position=(sq['x'] + sq['w']/2, sq['y'] + sq['h']/2))
+					self.add_child(mark_node)
+
+					self.index = (self.index +1) % len(self.messages)
+					self.label.text = self.messages[self.index]
+					self.current_message = self.messages[self.index]
+					self.label.text = ""
+					self.char_index = 0
+					self.typing_timer = 0
+					self.typing = True
+					
+					winner_mark, win_line = self.check_winner()
+					if winner_mark and win_line:
+						self.winner = '1P' if winner_mark == '⚪︎' else '2P'
+						self.label.text = f'{self.winner}の勝ち'
+						self.typing = False
+						start_sq = self.squares[win_line[0]]
+						end_sq = self.squares[win_line[2]]
+						start_pos = (start_sq['x'] + start_sq['w']/2, start_sq['y'] + start_sq['h']/2)
+						end_pos = (end_sq['x'] + end_sq['w']/2, end_sq['y'] + end_sq['h']/2)
+						
+						path = ui.Path()
+						path.move_to(*start_pos)
+						path.line_to(*end_pos)
+						line_node = ShapeNode(path, stroke_color= 'green')
+					else:
+						if all(sq.get('mark', "") != "" for sq in self.squares):
+							self.winner = "引き分け"
+							self.label.text = "引き分け"
+							self.typing = False
+					
+					break
+				
+	def update(self):
+		if self.typing:
+			dt = 1/60
+			self.typing_timer += dt
+			if self.typing_timer >= self.typing_speed:
+				self.typing_timer = 0
+				self.char_index += 1
+				self.label.text = self.current_message[:self.char_index]
+				if self.char_index >= len(self.current_message):
+					self.typing = False
+				
+	def check_winner(self):
+		lines = [
+			[0,1,2], [3,4,5], [6,7,8],  
+			[0,3,6], [1,4,7], [2,5,8],  
+			[0,4,8], [2,4,6]            
+			]
+		for line in lines:
+			if self.squares[line[0]]['mark'] != "" and \
+			self.squares[line[0]]['mark'] == self.squares[line[1]]['mark'] == self.squares[line[2]]['mark']:
+				return self.squares[line[0]]['mark'], line
+		return None, None
+				
+if __name__ == '__main__':
+	run(WhiteBackground(), LANDSCAPE)
+
+     </code></pre>
      <p><h2><a href="index.html">TOPへ</a></h2></p>
     </body>
     </html>
