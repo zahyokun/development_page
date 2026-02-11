@@ -7,7 +7,116 @@
     </head>
     <body>
       <h1> お絵描きアプリ（一部AI使用）</h1>
-     <p>未制作</p>
+     <video width="800px" height="500px" src="paint.MOV" controls></video>
+     <p><h2>コードの例（pythonアプリで実行可能）</h2></p>
+		   <button onclick="copyCode()">コピー</button>
+     <pre><code id="code">
+import scene
+
+try:
+	scene.stop()
+except:
+	pass
+
+from scene import *
+import ui
+
+class WhiteBackground(Scene):
+	def setup(self):
+		transparent = (0, 0, 0, 0)
+		
+		self.background_color = 'white'
+		
+		self.selected_color = "white"
+		
+		self.colors = ['red', 'pink', 'blue','yellow','green','orange','purple','lightblue','black','white']
+		
+		cell_size = 20
+		grid_size = 60
+		
+		total_width = cell_size * grid_size
+		total_height = total_width
+		
+		start_x = self.size.w / 2 - total_width / 2
+		start_y = self.size.h / 2 - total_height / 2 + 60
+		
+		self.squares = []
+		
+		for row in range(grid_size):
+			for col in range(grid_size):
+				x = start_x + col * cell_size
+				y = start_y + (grid_size - 1 - row) * cell_size
+				square = ShapeNode(ui.Path.rect(0, 0, cell_size, cell_size),	
+				
+				fill_color = 'white',
+				stroke_color = transparent,
+				
+				position = (x + cell_size / 2, y + cell_size / 2))
+						
+				self.add_child(square)
+				self.squares.append({'x': x, 'y': y, 'w': cell_size, 'h': cell_size, 'node':square})
+				
+		pen_size_w = 50
+		pen_size_h = 100
+		
+		pen_start_x = 52
+		
+		self.pens = []
+		
+		for c, col in enumerate(self.colors):
+			x = (c + 1) * pen_start_x * 2
+			y = 0
+			penshape = ShapeNode(ui.Path.rect(0, 0, pen_size_w, pen_size_h),
+			
+			fill_color = col,
+			stroke_color = 'black',
+			
+			position = (x + pen_size_w / 2, y + pen_size_h / 2))
+			
+			self.add_child(penshape)
+			self.pens.append({'x': x, 'y': y, 'w': pen_size_w, 'h': pen_size_h, 'color':col, 'node':penshape})
+			
+	def touch_began(self,touch):
+		self.last_pos = (touch.location.x, touch.location.y)
+		
+		for sq in self.squares:
+			if sq['x'] <= touch.location.x <= sq['x'] + sq['w'] and \
+			sq['y'] <= touch.location.y <= sq['y'] + sq['h']:
+				
+				sq['node'].fill_color = self.selected_color
+		
+		for pe in self.pens:
+			if pe['x'] <= touch.location.x <= pe['x'] + pe['w'] and \
+			pe['y'] <= touch.location.y <= pe['y'] + pe['h']:
+				
+				self.selected_color = pe['color']
+				
+				for p in self.pens:
+					p['node'].path = ui.Path.rect(0, 0, 50, 100)
+					
+				pe['node'].path = ui.Path.rect(0, 0, 70, 140)
+				break
+
+	
+	def touch_moved(self, touch):
+		if hasattr(self, 'last_pos'):
+			x0, y0 = self.last_pos
+			x1, y1 = touch.location.x, touch.location.y
+			steps = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+			for i in range(steps):
+				xi = x0 + (x1 - x0) * i / steps
+				yi = y0 + (y1 - y0) * i / steps
+				for sq in self.squares:
+					if sq['x'] <= xi <= sq['x'] + sq['w'] and sq['y'] <= yi <= sq['y'] + sq['h']:
+						sq['node'].fill_color = self.selected_color
+						
+			self.last_pos = (x1, y1)
+						
+		else:
+			self.last_pos = touch.location.x, touch.location.y
+
+run(WhiteBackground(), orientation = LANDSCAPE)
+     </code></pre>
      <p><h2><a href="index.html">TOPへ</a></h2></p>
     </body>
     </htm>
