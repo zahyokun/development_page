@@ -7,7 +7,271 @@
     </head>
     <body>
       <h1> マインスイーパー（一部AI使用）</h1>
-     <p>未制作</p>
+     <video width="800px" height="500px" src="landmine.mp4" controls></video>
+     <p><h2>コードの例（pythonアプリで実行可能）</h2></p>
+		<button onclick="copyCode()">コピー</button>
+     <pre><code id="code">
+from scene import*
+from random import*
+from math import*
+
+game = True
+mode = -1
+sweep = 0
+defeat = False
+win = False
+zero = True
+tatemasu_size = 8
+yokomasu_size = 16
+flag_print = True
+
+class WhiteBackground(Scene):
+	
+	def setup(self):
+		self.background_color = "white"
+		
+		global tatemasu_size, yokomasu_size
+		
+		cell_size = 60
+		level = 30
+		
+		total_width = cell_size * yokomasu_size
+		total_height = cell_size * tatemasu_size
+		
+		start_x = self.size.w / 2 - total_width / 2
+		start_y = self.size.h / 2 - total_height / 2
+		
+		self.squares = []
+		
+		for row in range(tatemasu_size):
+			for col in range(yokomasu_size):
+				x = start_x + col * cell_size
+				y = start_y + row * cell_size
+				
+				square = ShapeNode(ui.Path.rect(0, 0, cell_size, cell_size),
+				fill_color = "#93E396",
+				stroke_color = "black",
+				position = (x + cell_size / 2, y + cell_size / 2))
+				
+				self.add_child(square)
+				self.squares.append({"x": x, "y": y, "w": cell_size,
+				"h": cell_size, "node":square, "mark":"0", "flag": True, "dug": False, "flag_node": None})
+				
+		used = set()
+		result = []
+		
+		while len(result) <= level - 1:
+			x = randint(0, tatemasu_size * yokomasu_size - 1)
+			if x not in used:
+				used.add(x)
+				result.append(x)
+				self.squares[x]["mark"] = "landmine"
+				
+		y = 0
+		for tatenum in range(tatemasu_size):
+			for yokonum in range(yokomasu_size):
+				if self.squares[y]["mark"] != "landmine":
+					number = 0
+					if tatenum != 0 and yokonum != 0:
+						if self.squares[y - (yokomasu_size + 1)]["mark"] == "landmine":
+							number = number + 1
+							
+					if tatenum != 0:
+						if self.squares[y - yokomasu_size]["mark"] == "landmine":
+							number = number + 1
+							
+					if tatenum != 0 and yokonum != yokomasu_size - 1:
+						if self.squares[y - (yokomasu_size - 1)]["mark"] == "landmine":
+							number = number + 1
+							
+					if yokonum != 0:
+						if self.squares[y - 1]["mark"] == "landmine":
+							number = number + 1
+							
+					if yokonum != yokomasu_size - 1:
+						if self.squares[y + 1]["mark"] == "landmine":
+							number = number + 1
+							
+					if tatenum != tatemasu_size - 1 and yokonum != 0:
+						if self.squares[y + (yokomasu_size - 1)]["mark"] == "landmine":
+							number = number + 1
+							
+					if tatenum != tatemasu_size - 1:
+						if self.squares[y + yokomasu_size]["mark"] == "landmine":
+							number = number + 1
+							
+					if tatenum != tatemasu_size - 1 and yokonum != yokomasu_size - 1:
+						if self.squares[y + (yokomasu_size + 1)]["mark"] == "landmine":
+							number = number + 1
+							
+					self.squares[y]["mark"] = str(number)
+					
+				y = y + 1
+				
+		flag_size_w = 120
+		flag_size_h = 140
+		self.flags = []
+		
+		for fl in range(3):
+			flag = ShapeNode(ui.Path.rect(0, 0, flag_size_w, flag_size_h),
+			fill_color = "white",
+			stroke_color = "black",
+			position = (self.size.w * (fl + 1) / 4, flag_size_h / 2))
+			
+			self.add_child(flag)
+			
+			flag_x = self.size.w * (fl + 1) / 4
+			flag_y = flag_size_h / 2
+			self.flags.append({"x": flag_x, "y": flag_y, "w": flag_size_w, "h": flag_size_h, "node": flag})
+			
+		flag_icon = SpriteNode("",  #""の中に旗の画像コードを入れる！←ーーーーーーーーーーーーーーーーーーーーーーーー重要
+		position = (self.flags[1]["x"], self.flags[1]["y"]),
+		size = (self.flags[1]["w"], self.flags[1]["h"]))
+		flag_icon.rotatiom = radians(180)
+		
+		scop_icon = SpriteNode("",   #""の中にスコップの画像コードを入れる！←ーーーーーーーーーーーーーーーーーーーー重要
+		position = (self.flags[0]["x"], self.flags[0]["y"]),
+		size = (self.flags[0]["h"], self.flags[0]["w"]))
+		scop_icon.rotation = radians(270)
+		
+		eraser_icon = SpriteNode("",  #""の中に消しゴムの画像コードを入れる！
+		position = (self.flags[2]["x"], self.flags[2]["y"]),
+		size = (self.flags[2]["h"], self.flags[2]["w"]))
+		eraser_icon.rotation = radians(270)
+							
+		self.add_child(flag_icon)
+		self.add_child(scop_icon)
+		self.add_child(eraser_icon)
+			
+		start_mode = False
+		global sweep
+		
+		while start_mode == False:
+			start_dig = randint(0, tatemasu_size * yokomasu_size - 1)
+			if self.squares[start_dig]["mark"] == "0":
+				start_mode = True
+				self.squares[start_dig]["node"].fill_color = "#AF701D"
+				sweep = sweep + 1
+				self.squares[start_dig]["flag"] = False
+				self.squares[start_dig]["dug"] = True
+				zero = True
+	
+	def touch_began(self,touch):
+		global game, mode, sweep, defeat, win, zero, tatemasu_size, yokomasu_size, flag_print
+		level = 30
+		if flag_print == True:
+			self.flag_icons = []
+			for fla in range(tatemasu_size * yokomasu_size):
+				self.flag_icons.append({"flag_node": ""})
+				flag_print = False
+		
+		if game == False:
+			return
+		
+		else:
+			for sq in self.squares:
+				if (sq["x"] <= touch.location.x <= sq["x"] + sq["w"]
+				and sq["y"] <= touch.location.y <= sq["y"] + sq["h"]
+				and sq["dug"] != True):
+					
+					#旗＝1、消しゴム＝2、スコップ＝0
+					
+					if mode == 1:
+						if sq["flag"] == True:
+							sq["flag"] = False
+							sq["node"].fill_color = "#93E396"
+							flag_icon = SpriteNode("export 5.png",
+							position = (sq["x"] + sq["w"] / 2, sq["y"] + sq["h"] / 2),
+							size = (sq["w"] - 1, sq["h"] - 1))
+							flag_icon.rotation = radians(270)
+								
+							self.add_child(flag_icon)
+							sq["flag_node"] = flag_icon
+							
+					elif mode == 2:
+						if sq["flag"] == False:
+							sq["flag"] = True
+							sq["node"].fill_color = "#93E396"
+							
+							if "flag_node" in sq and sq["flag_node"] is not None:
+								if sq["flag_node"].parent is not None:
+									sq["flag_node"].remove_from_parent()
+								sq["flag_node"] = None
+							
+					elif mode == 0:
+						if sq["flag"] != False:
+							sq["flag"] = False
+							sq["dug"] = True
+							
+							if sq["mark"] == "landmine":
+								defeat = True
+								game = False
+								
+								defeat_message = "GAME OVER"
+								defeat_node = LabelNode(defeat_message,
+								color = "black",
+								font = ("Helvetica", 125),
+								position = (self.size.w / 2, 725))
+								self.add_child(defeat_node)
+								
+								for fin in range(tatemasu_size * yokomasu_size):
+									if self.squares[fin]["mark"] == "landmine":
+										self.squares[fin]["node"].fill_color = "red"						
+										
+									elif self.squares[fin]["mark"] != "landmine" and self.squares[fin]["flag"] == False :
+										if "flag_node" in self.squares[fin] and self.squares[fin]["flag_node"] is not None:
+											
+											if self.squares[fin]["flag_node"].parent is not None:
+												self.squares[fin]["flag_node"].remove_from_parent()
+											self.squares[fin]["flag_node"] = None
+											self.squares[fin]["node"].fill_color = "pinky"	
+										
+								sq["node"].fill_color = "red"
+								if "flag_node" in sq and sq["flag_node"] is not None:
+									sq["flag_node"].remove_from_parent()
+									sq["flag_node"] = None
+								
+							else:
+								if sq["mark"] == "0":
+									sq["node"].fill_color = "#AF701D"
+									sweep = sweep + 1
+									sq["flag"] = False
+									sq["dug"] = True
+									
+								else:
+									figure = sq["mark"]
+									mark_node = LabelNode(figure,
+									color = "black",font = ("Helvetica", 50),
+									position = (sq["x"] + sq["w"] / 2,
+									sq["y"] + sq["h"] / 2))
+									self.add_child(mark_node)
+									sq["node"].fill_color = "#AF701D"
+									sweep = sweep + 1
+								
+			for i, modechange in enumerate(self.flags):
+				if (modechange["x"] - modechange["w"] / 2 <= touch.location.x <= modechange["x"] + modechange["w"] / 2
+				and 0 <= touch.location.y <= modechange["h"]):
+					
+					mode = i
+					
+					for c in self.flags:
+						c["node"].stroke_color = "black"
+					
+					modechange["node"].stroke_color = "red"
+					
+		if sweep == len(self.squares) - level:
+			win = True
+			game = False
+			win_message = "CLEAR!"
+			win_node = LabelNode(win_message,
+			color = "black",
+			font = ("Helvetica", 125),
+			position = (self.size.w / 2, 725))
+			self.add_child(win_node)
+			
+if __name__ == '__main__':
+	run(WhiteBackground(), LANDSCAPE)
+     </code></pre>
      <p><h2><a href="index.html">TOPへ</a></h2></p>
     </body>
     </html>
